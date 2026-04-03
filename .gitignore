@@ -1,2 +1,6 @@
 *.class
 *.jar
+server/build/
+client-console/build/
+server/manifest.txt
+client-console/manifest.txt

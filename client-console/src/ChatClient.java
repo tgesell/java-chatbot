@@ -38,10 +38,20 @@ public class ChatClient {
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true)
         ) {
             String prompt = in.readLine();
+            if (prompt == null) {
+                System.out.println("Server closed the connection before sending a prompt.");
+                return;
+            }
             System.out.println(prompt);
 
-            String name = scanner.nextLine();
+            String name = scanner.nextLine().trim();
+            if (name.isEmpty()) {
+                name = "Anonymous";
+            }
             out.println(name);
+
+            String clientIp = socket.getLocalAddress().getHostAddress();
+            out.println(clientIp);
 
             Thread readerThread = new Thread(() -> {
                 try {
