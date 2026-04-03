@@ -6,30 +6,60 @@ import java.net.Socket;
 import java.util.Scanner;
 
 public class ChatClient {
-    private static final String HOST = "127.0.0.1";
-    private static final int PORT = 5000;
+    private static final String DEFAULT_HOST = "127.0.0.1";
+    private static final int DEFAULT_PORT = 5000;
 
     public static void main(String[] args) {
-        System.out.println("Connecting to chat server...");
+        Scanner scanner = new Scanner(System.in);
+
+        System.out.print("Server host [" + DEFAULT_HOST + "]: ");
+        String host = scanner.nextLine().trim();
+        if (host.isEmpty()) {
+            host = DEFAULT_HOST;
+        }
+
+        System.out.print("Server port [" + DEFAULT_PORT + "]: ");
+        String portInput = scanner.nextLine().trim();
+        int port = DEFAULT_PORT;
+        if (!portInput.isEmpty()) {
+            try {
+                port = Integer.parseInt(portInput);
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid port. Using default: " + DEFAULT_PORT);
+                port = DEFAULT_PORT;
+            }
+        }
+
+        System.out.println("Connecting to chat server at " + host + ":" + port + "...");
 
         try (
-            Socket socket = new Socket(HOST, PORT);
-            BufferedReader in = new BufferedReader(
-                new InputStreamReader(socket.getInputStream()));
-            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-            Scanner scanner = new Scanner(System.in)
+            Socket socket = new Socket(host, port);
+            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            PrintWriter out = new PrintWriter(socket.getOutputStream(), true)
         ) {
-            String serverMessage = in.readLine();
-            System.out.println(serverMessage);
+            String prompt = in.readLine();
+            System.out.println(prompt);
+
+            String name = scanner.nextLine();
+            out.println(name);
+
+            Thread readerThread = new Thread(() -> {
+                try {
+                    String serverMessage;
+                    while ((serverMessage = in.readLine()) != null) {
+                        System.out.println(serverMessage);
+                    }
+                } catch (IOException e) {
+                    System.out.println("Disconnected from server.");
+                }
+            });
+
+            readerThread.setDaemon(true);
+            readerThread.start();
 
             while (true) {
-                System.out.print("You: ");
                 String userInput = scanner.nextLine();
-
                 out.println(userInput);
-
-                String response = in.readLine();
-                System.out.println(response);
 
                 if (userInput.equalsIgnoreCase("quit")) {
                     break;
@@ -37,8 +67,9 @@ public class ChatClient {
             }
 
         } catch (IOException e) {
-            System.out.println("Client error: " + e.getMessage());
-            e.printStackTrace();
+            System.out.println("Could not connect: " + e.getMessage());
+        } finally {
+            scanner.close();
         }
     }
 }
