@@ -2,7 +2,12 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.net.Socket;
+import java.net.URL;
+import java.util.Enumeration;
 import java.util.Scanner;
 
 public class ChatClient {
@@ -50,17 +55,23 @@ public class ChatClient {
             }
             out.println(name);
 
-            String clientIp = socket.getLocalAddress().getHostAddress();
-            out.println(clientIp);
+            String privateIp = getPrivateIpv4Address();
+            String publicIp = getPublicIpAddress();
 
-            Thread readerThread = new Thread(() -> {
-                try {
-                    String serverMessage;
-                    while ((serverMessage = in.readLine()) != null) {
-                        System.out.println(serverMessage);
+            out.println(privateIp);
+            out.println(publicIp);
+
+            Thread readerThread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        String serverMessage;
+                        while ((serverMessage = in.readLine()) != null) {
+                            System.out.println(serverMessage);
+                        }
+                    } catch (IOException e) {
+                        System.out.println("Disconnected from server.");
                     }
-                } catch (IOException e) {
-                    System.out.println("Disconnected from server.");
                 }
             });
 
@@ -81,5 +92,59 @@ public class ChatClient {
         } finally {
             scanner.close();
         }
+    }
+
+    private static String getPrivateIpv4Address() {
+        try {
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+
+            while (interfaces.hasMoreElements()) {
+                NetworkInterface networkInterface = interfaces.nextElement();
+
+                if (!networkInterface.isUp() || networkInterface.isLoopback() || networkInterface.isVirtual()) {
+                    continue;
+                }
+
+                Enumeration<InetAddress> addresses = networkInterface.getInetAddresses();
+
+                while (addresses.hasMoreElements()) {
+                    InetAddress address = addresses.nextElement();
+
+                    if (address instanceof Inet4Address
+                            && !address.isLoopbackAddress()
+                            && address.isSiteLocalAddress()) {
+                        return address.getHostAddress();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+
+        return "unknown-private";
+    }
+
+    private static String getPublicIpAddress() {
+        BufferedReader reader = null;
+        try {
+            URL url = new URL("https://api.ipify.org");
+            reader = new BufferedReader(new InputStreamReader(url.openStream()));
+            String ip = reader.readLine();
+            if (ip != null && !ip.trim().isEmpty()) {
+                return ip.trim();
+            }
+        } catch (IOException e) {
+            // Ignore
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (IOException e) {
+                    // Ignore
+                }
+            }
+        }
+
+        return "unknown-public";
     }
 }

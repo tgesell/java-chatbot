@@ -9,11 +9,11 @@ public class ClientHandler implements Runnable {
     private PrintWriter out;
     private BufferedReader in;
     private String clientName;
-    private String clientIp;
+    private String privateIp;
+    private String publicIp;
 
     public ClientHandler(Socket socket) {
         this.socket = socket;
-        this.clientIp = socket.getInetAddress().getHostAddress();
     }
 
     @Override
@@ -29,7 +29,17 @@ public class ClientHandler implements Runnable {
                 clientName = "Anonymous";
             }
 
-            String joinMessage = clientName + " (" + clientIp + ") has joined the chat.";
+            privateIp = in.readLine();
+            if (privateIp == null || privateIp.trim().isEmpty()) {
+                privateIp = "unknown-private";
+            }
+
+            publicIp = in.readLine();
+            if (publicIp == null || publicIp.trim().isEmpty()) {
+                publicIp = "unknown-public";
+            }
+
+            String joinMessage = clientName + " (private: " + privateIp + ", public: " + publicIp + ") has joined the chat.";
             System.out.println(joinMessage);
             ChatServer.broadcast(joinMessage);
 
@@ -39,7 +49,7 @@ public class ClientHandler implements Runnable {
                     break;
                 }
 
-                String formattedMessage = clientName + " (" + clientIp + "): " + message;
+                String formattedMessage = clientName + " (private: " + privateIp + ", public: " + publicIp + "): " + message;
                 System.out.println(formattedMessage);
                 ChatServer.broadcast(formattedMessage);
             }
@@ -61,7 +71,10 @@ public class ClientHandler implements Runnable {
             ChatServer.removeClient(this);
 
             String leaveName = (clientName == null) ? "A user" : clientName;
-            String leaveMessage = leaveName + " (" + clientIp + ") has left the chat.";
+            String leavePrivateIp = (privateIp == null) ? "unknown-private" : privateIp;
+            String leavePublicIp = (publicIp == null) ? "unknown-public" : publicIp;
+
+            String leaveMessage = leaveName + " (private: " + leavePrivateIp + ", public: " + leavePublicIp + ") has left the chat.";
             System.out.println(leaveMessage);
             ChatServer.broadcast(leaveMessage);
 
